@@ -27,22 +27,25 @@ def main():
     radius = np.zeros(INIT_MAX_NUM)
     growth_speed = np.zeros(INIT_MAX_NUM)
     emerge_times = np.zeros(INIT_MAX_NUM)
+    freezing_times = np.zeros(INIT_MAX_NUM)
 
     with open(f"{OUTPUT_DIR}/stats.dat", "w", encoding="utf-8") as stats_f:
         while True:
             try:
-                step(num_bubbles, center, radius, growth_speed, emerge_times, stats_f)
+                step(num_bubbles, center, radius, growth_speed,
+                     emerge_times, freezing_times, stats_f)
             except TerminateBubbles:
                 break
 
     with h5py.File(f"{OUTPUT_DIR}/final_state.h5", "w") as fout:
-        final_dump(fout, num_bubbles, center, radius, growth_speed, emerge_times)
+        final_dump(fout, num_bubbles, center, radius,
+                   growth_speed, emerge_times, freezing_times)
 
 
-def step(num_bubbles, center, radius, growth_speed, emerge_times, stats_f):
+def step(num_bubbles, center, radius, growth_speed, emerge_times, freezing_times, stats_f):
     global _STEPS  # pylint: disable=global-statemenet
     growth(radius, growth_speed)
-    freezing(num_bubbles, center, radius, growth_speed)
+    freezing(num_bubbles, center, radius, growth_speed, freezing_times)
     do_logs(stats_f, num_bubbles, center, radius, growth_speed)
     new_bubbles(num_bubbles, center, radius, growth_speed, emerge_times)
     _STEPS += 1
@@ -53,10 +56,11 @@ def growth(radius, growth_speed):
     radius[mask] += growth_speed[mask]*DT
 
 
-def freezing(num_bubbles, center, radius, growth_speed):
+def freezing(num_bubbles, center, radius, growth_speed, freezing_times):
     mask = slice(None, num_bubbles[0])
     valid_mask = check_valid_centers(center[:, mask], center[:, mask], radius[mask], radius[mask], ignore_diag=True)
     growth_speed[mask][~valid_mask] = 0
+    freezing_times[mask][(~valid_mask) & (freezing_times[mask] == 0)] = _STEPS
 
 
 def new_bubbles(num_bubbles, center, radius, growth_speed, emerge_times):
@@ -87,7 +91,7 @@ def sample_one_center():
 
 def check_valid_centers(centers_a, centers_b, radius_a, radius_b, ignore_diag=False):
     # if centers_a.shape[1] > 300:
-        # import ipdb; ipdb.set_trace()
+    #     import ipdb; ipdb.set_trace()
     if centers_a.shape[1] == 0:
         return np.ones(centers_b.shape[1]).astype(bool)
     dist = np.square(centers_a.T[:, np.newaxis, :] - centers_b.T).sum(axis=-1)
@@ -114,11 +118,13 @@ def do_logs(stats_f, num_bubbles, center, radius, growth_speed):
         plt.close()
 
 
-def final_dump(final_f, num_bubbles, center, radius, growth_speed, emerge_times):
+def final_dump(final_f, num_bubbles, center, radius,
+               growth_speed, emerge_times, freezing_times):
     final_f["center"] = center
     final_f["radius"] = radius
     final_f["growth_speed"] = growth_speed
     final_f["emerge_times"] = emerge_times
+    final_f["freezing_times"] = freezing_times
     final_f.attrs["DIM"] = DIM
     final_f.attrs["INIT_MAX_NUM"] = INIT_MAX_NUM
     final_f.attrs["BUBBLING_RATE"] = BUBBLING_RATE
