@@ -33,7 +33,7 @@ def main():
             try:
                 step(num_bubbles, center, radius, growth_speed, emerge_times, stats_f)
             except TerminateBubbles:
-                pass
+                break
 
     with h5py.File(f"{OUTPUT_DIR}/final_state.h5") as fout:
         final_dump(fout, num_bubbles, center, radius, growth_speed, emerge_times)
