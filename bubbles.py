@@ -35,7 +35,7 @@ def main():
             except TerminateBubbles:
                 break
 
-    with h5py.File(f"{OUTPUT_DIR}/final_state.h5") as fout:
+    with h5py.File(f"{OUTPUT_DIR}/final_state.h5", "w") as fout:
         final_dump(fout, num_bubbles, center, radius, growth_speed, emerge_times)
 
 
